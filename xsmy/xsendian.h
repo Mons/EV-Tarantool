@@ -1,9 +1,21 @@
 #ifndef XSENDIAN_H
 #define XSENDIAN_H
 
-#include <endian.h>
+/*
+#if defined(PERL_DARWIN)
+	#include <machine/endian.h>
+#elif defined(OS_SOLARIS)
+#elif defined(OS_FREEBSD) || defined(OS_OPENBSD) || defined(OS_NETBSD) || defined(OS_DRAGONFLYBSD)
+	#include <sys/types.h>
+	#include <sys/endian.h>
+#else
+	#include <endian.h>
+#endif
+*/
+
+#include <sys/types.h>
+
 #ifndef le64toh
-# include <byteswap.h>
 # if __BYTE_ORDER == __LITTLE_ENDIAN
 
 #ifndef le16toh

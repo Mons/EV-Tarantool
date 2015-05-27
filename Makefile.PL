@@ -8,18 +8,23 @@ Requires: c-ares19
 Requires: perl-EV
 =cut
 
+# -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk/usr/include
+
 WriteMakefile(
 	NAME              => 'EV::Tarantool',
 	AUTHOR            => 'Mons Anderson <mons@cpan.org>',
 	VERSION_FROM      => 'lib/EV/Tarantool.pm',
 	ABSTRACT_FROM     => 'lib/EV/Tarantool.pm',
 	PREREQ_PM         => { EV => 4 },
-	LIBS              => ['-lcares19'],
+	LIBS              => ['-lcares'],
 	DEFINE            => '-g -ggdb -O0',
 	CONFIGURE => sub {
 		require EV::MakeMaker;
 		return {EV::MakeMaker::ev_args(
-			INC               => '-I/usr/include/c-ares19 -I. -I./evcnn/src -I./xstnt -I./xsmy',
+			INC               =>
+				'-I/usr/include/c-ares19'.
+				($^O eq 'darwin' ? "-I/usr/include" : '').
+				' -I. -I./evcnn/src -I./xstnt -I./xsmy',
 		)};
 	},
 );

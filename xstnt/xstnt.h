@@ -469,7 +469,7 @@ static inline SV * newSVpvn_pformat ( const char *data, STRLEN size, const unpac
 	return -1 on fatal error
 */
 
-static int parse_reply(HV *ret, const char const *data, STRLEN size, const unpack_format const * format, AV *fields) {
+static int parse_reply(HV *ret, const char *data, STRLEN size, const unpack_format * format, AV *fields) {
 	const char *ptr, *beg, *end;
 	
 	//warn("parse data of size %d",size);
@@ -856,7 +856,7 @@ static void configure_spaces(HV *dest, SV * src) {
 				}
 				if ((key = hv_fetch( dest,(char *)&id,sizeof(U32),0 )) && *key) {
 					TntSpace *old  = (TntSpace *) SvPVX(*key);
-					croak("Duplicate id '%f' for space %d. Already set by space %s", id, SvPV_nolen(old->name));
+					croak("Duplicate id '%u' for space %s. Already set by space %s", id, name, SvPV_nolen(old->name));
 				}
 				
 				HV *space = (HV *) SvRV(HeVAL(ent));
