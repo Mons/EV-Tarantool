@@ -8,6 +8,9 @@
 #define XSEV_CON_HOOKS 1
 #include "xsevcnn.h"
 
+#ifndef REQDEBUG
+#define REQDEBUG 0
+#endif
 //#define MYDEBUG
 
 #include "xstnt.h"
@@ -30,7 +33,7 @@ typedef struct {
 static void on_request_timer(EV_P_ ev_timer *t, int flags ) {
 	TntCtx * ctx = (TntCtx *) t;
 	TntCnn * self = (TntCnn *) ctx->self;
-	cwarn("timer called on %p: %s", ctx, ctx->call);
+	if (REQDEBUG) warn("[REQ:%u] Timeout called for request %s", ctx->id, ctx->call);
 	ENTER;SAVETMPS;
 	dSP;
 	
@@ -96,12 +99,13 @@ static void on_read(ev_cnn * self, size_t len) {
 			key = hv_delete(tnt->reqs, (char *) &id, sizeof(id),0);
 			
 			if (!key) {
-				cwarn("key %d not found",id);
+				if (REQDEBUG) warn("[REQ:%u] Response not expected", id);
 				rbuf += 12 + ln;
 			}
 			else {
 				ctx = ( TntCtx * ) SvPVX( key );
 				ev_timer_stop(self->loop,&ctx->t);
+				if (REQDEBUG) warn("[REQ:%u] Response received: %s", id, ctx->call);
 				
 				HV * hv = newHV();
 				
@@ -331,6 +335,7 @@ void ping(SV *this, SV * cb)
 		ctx->wbuf = pkt_ping(iid);
 		
 		++self->pending;
+		if (REQDEBUG) warn("[REQ:%u] Sending request: %s", ctx->id, ctx->call);
 		do_write( &self->cnn,SvPVX(ctx->wbuf),12 );
 		
 		XSRETURN_UNDEF;
@@ -376,6 +381,7 @@ void lua( SV *this, SV * proc, AV * tuple, ... )
 			ev_timer_start(self->cnn.loop, &ctx->t);
 		}
 		
+		if (REQDEBUG) warn("[REQ:%u] Sending request: %s with timeout %0.2fs", ctx->id, ctx->call, timeout);
 		do_write( &self->cnn,SvPVX(ctx->wbuf), SvCUR(ctx->wbuf));
 		
 		XSRETURN_UNDEF;
@@ -402,6 +408,7 @@ void select( SV *this, SV *space, AV * keys, ... )
 			
 			++self->pending;
 			
+			if (REQDEBUG) warn("[REQ:%u] Sending request: %s", ctx->id, ctx->call);
 			do_write( &self->cnn,SvPVX(ctx->wbuf), SvCUR(ctx->wbuf));
 		}
 		
@@ -430,6 +437,7 @@ void insert( SV *this, SV *space, SV * t, ... )
 			(void) hv_store( self->reqs, (char*)&iid, sizeof(iid), SvREFCNT_inc(ctxsv), 0 );
 			++self->pending;
 		
+			if (REQDEBUG) warn("[REQ:%u] Sending request: %s", ctx->id, ctx->call);
 			do_write( &self->cnn,SvPVX(ctx->wbuf), SvCUR(ctx->wbuf));
 		}
 		
@@ -456,6 +464,7 @@ void update( SV *this, SV *space, SV * t, AV *ops, ... )
 			(void) hv_store( self->reqs, (char*)&iid, sizeof(iid), SvREFCNT_inc(ctxsv), 0 );
 			++self->pending;
 			
+			if (REQDEBUG) warn("[REQ:%u] Sending request: %s", ctx->id, ctx->call);
 			do_write( &self->cnn,SvPVX(ctx->wbuf), SvCUR(ctx->wbuf));
 		}
 		
