@@ -346,7 +346,7 @@ sub delete : method {
 
 sub update : method {
 	my ($srv,$cb)  = &_srv_rw or return;
-	$srv->update(@_);
+	$srv->update(@_,$cb);
 }
 
 sub each : method {
