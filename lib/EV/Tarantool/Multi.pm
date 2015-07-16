@@ -285,10 +285,10 @@ sub _srv_by_mode {
 	my $cb = pop;
 	return $srv->{c}, sub {
 		if ($_[0]) {
-			$_[0]{status} = $srv->{rw} ? 'rw' : 'ro';
+			$_[0]{mode} = $srv->{rw} ? 'rw' : 'ro';
 		}
 		elsif ($_[2]) {
-			$_[2]{status} = $srv->{rw} ? 'rw' : 'ro';
+			$_[2]{mode} = $srv->{rw} ? 'rw' : 'ro';
 		}
 		goto &$cb;
 	};
@@ -310,10 +310,10 @@ sub _srv_rw {
 	my $cb = pop;
 	return $srv->{c}, sub {
 		if ($_[0]) {
-			$_[0]{status} = $srv->{rw} ? 'rw' : 'ro';
+			$_[0]{mode} = $srv->{rw} ? 'rw' : 'ro';
 		}
 		elsif ($_[2]) {
-			$_[2]{status} = $srv->{rw} ? 'rw' : 'ro';
+			$_[2]{mode} = $srv->{rw} ? 'rw' : 'ro';
 		}
 		goto &$cb;
 	};
