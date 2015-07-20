@@ -354,6 +354,7 @@ void lua( SV *this, SV * proc, AV * tuple, ... )
 		ctx->use_hash = self->use_hash;
 		
 		uint32_t iid = ++self->seq;
+		ctx->id = iid;
 		
 		//warn("reqid:%d; Len tuple before pkt_lua: %d\n",iid, av_len(tuple)+1);
 		ctx->wbuf = pkt_lua(ctx, iid, self->spaces, proc, tuple, opts, cb );
@@ -375,13 +376,12 @@ void lua( SV *this, SV * proc, AV * tuple, ... )
 		}
 		
 		if (timeout > 0) {
-			ctx->id = iid;
 			ctx->self = self;
 			ev_timer_init(&ctx->t, on_request_timer, timeout, 0.);
 			ev_timer_start(self->cnn.loop, &ctx->t);
 		}
 		
-		if (REQDEBUG) warn("[REQ:%u] Sending request: %s with timeout %0.2fs", ctx->id, ctx->call, timeout);
+		if (REQDEBUG) warn("[REQ:%u] Sending request: %s %s with timeout %0.2fs", ctx->id, ctx->call, SvPV_nolen(proc) ,timeout);
 		do_write( &self->cnn,SvPVX(ctx->wbuf), SvCUR(ctx->wbuf));
 		
 		XSRETURN_UNDEF;
@@ -400,6 +400,7 @@ void select( SV *this, SV *space, AV * keys, ... )
 		ctx->use_hash = self->use_hash;
 		
 		uint32_t iid = ++self->seq;
+		ctx->id = iid;
 		
 		if ((ctx->wbuf = pkt_select(ctx, iid, self->spaces, space, keys, items == 5 ? (HV *) SvRV(ST( 3 )) : 0, cb ))) {
 		
@@ -430,6 +431,7 @@ void insert( SV *this, SV *space, SV * t, ... )
 		ctx->use_hash = self->use_hash;
 		
 		uint32_t iid = ++self->seq;
+		ctx->id = iid;
 		
 		if(( ctx->wbuf = pkt_insert(ctx, iid, self->spaces, space, t, ix, items == 5 ? (HV *) SvRV(ST( 3 )) : 0, cb ) )) {
 		
@@ -457,6 +459,7 @@ void update( SV *this, SV *space, SV * t, AV *ops, ... )
 		ctx->use_hash = self->use_hash;
 		
 		uint32_t iid = ++self->seq;
+		ctx->id = iid;
 		
 		if ((ctx->wbuf = pkt_update(ctx, iid, self->spaces, space, t, ops, items == 6 ? (HV *) SvRV(ST( 4 )) : 0, cb ))) {
 		
