@@ -64,40 +64,49 @@ sub new {
 			read_buffer => 2*1024*1024,
 			connected => sub {
 				my $c = shift;
+				@{ $srv->{peer} = {} }{qw(host port)} = @_;
 				$c->lua('box.dostring',['
-					if box.status_change_wait then else
+					if box.status_change_wait and box.status_change_wait_version == 4 then else
 						box.status_waiters = setmetatable({},{ __mode = "kv" })
-						function box.status_change_wait(status)
+						function box.status_change_wait(status,timeout)
+							timeout = tonumber(timeout)
 							local ch = box.ipc.channel(1)
 							box.status_waiters[ch] = ch
+							local start = box.time()
 							while true do
-								if status ~= box.info.status then
+								local delta = box.time() - start
+								if status ~= box.info.status or delta >= timeout then
 									box.status_waiters[ch] = nil
 									ch = nil
-									return box.info.status
+									return box.tuple.new({ box.info.status, tostring(box.status_change_wait_version) })
 								end
-								local z = ch:get()
+								local z = ch:get(timeout - delta)
 							end
 						end
-						local prev = box.on_reload_configuration
-						function box.on_reload_configuration()
-							collectgarbage("collect")
-							for ch in pairs(box.status_waiters) do
-								ch:put(true)
+						if box.status_change_wait then else
+							local prev = box.on_reload_configuration
+							function box.on_reload_configuration()
+								collectgarbage("collect")
+								for ch in pairs(box.status_waiters) do
+									ch:put(true)
+								end
+								prev()
 							end
-							prev()
 						end
+						box.status_change_wait_version = 4
 					end
-					return box.info.status
+					return box.tuple.new({ box.info.status, tostring(box.status_change_wait_version) })
 				'],sub {
 					if (my $res = shift) {
-						my $status = $res->{tuples}[0][0];
+						my ($status,$ver) = @{ $res->{tuples}[0] };
+						warn "Connected with status $status, watcher v$ver\n";
 						my $gen = ++$srv->{gen};
+						my $wait_timeout = 10;
 						my $statuswait;$statuswait = sub { my $statuswait = $statuswait;
 							$gen == $srv->{gen} or return;
-							$c->lua('box.status_change_wait',[$status], { timeout => 0 },sub {
+							$c->lua('box.status_change_wait',[$status,$wait_timeout], { timeout => $wait_timeout+2 },sub {
 								if (my $res = shift) {
-									my $newstatus = $res->{tuples}[0][0];
+									my ($newstatus,$version) = @{ $res->{tuples}[0] };
 									my $rw = $newstatus eq 'primary' ? 1 : 0;
 									if ($rw != $srv->{rw}) {
 										$self->_db_offline( $srv, "Status change $srv->{host}:$srv->{port}: $status to $newstatus");
@@ -111,7 +120,6 @@ sub new {
 								$statuswait->();
 							});
 						};$statuswait->();weaken($statuswait);
-
 						if ($status eq 'primary') {
 							$srv->{rw} = 1;
 						}
@@ -122,7 +130,6 @@ sub new {
 							$srv->{rw} = 0;
 							warn "strange status received: $status";
 						}
-						@{ $srv->{peer} = {} }{qw(host port)} = @_;
 						$warned = 0;
 						$self->_db_online( $srv );
 					} else {
@@ -147,12 +154,12 @@ sub new {
 		});
 		#$srv->{c}->connect;
 	}
-	if ($self->{connected_mode} eq 'rw' and not $rws ) {
-		die "Cluster could not ever be 'connected' since waiting for at least one 'rw' node, and have none of them (@{$servers})\n";
-	}
-	if ($self->{connected_mode} eq 'ro' and not $ros ) {
-		die "Cluster could not ever be 'connected' since waiting for at least one 'ro' node, and have none of them (@{$servers})\n";
-	}
+	#if ($self->{connected_mode} eq 'rw' and not $rws ) {
+	#	die "Cluster could not ever be 'connected' since waiting for at least one 'rw' node, and have none of them (@{$servers})\n";
+	#}
+	#if ($self->{connected_mode} eq 'ro' and not $ros ) {
+	#	die "Cluster could not ever be 'connected' since waiting for at least one 'ro' node, and have none of them (@{$servers})\n";
+	#}
 	if (not $ros+$rws ) {
 		die "Cluster could not ever be 'connected' since have no servers (@{$servers})\n";
 	}

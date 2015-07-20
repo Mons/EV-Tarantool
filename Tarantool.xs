@@ -364,7 +364,7 @@ void lua( SV *this, SV * proc, AV * tuple, ... )
 		
 		if ( opts && (key = hv_fetchs( opts, "timeout", 0 ))) {
 			timeout = SvNV( *key );
-			cwarn("to from args: %f",timeout);
+			//cwarn("to from args: %f",timeout);
 		} else {
 			timeout = self->cnn.rw_timeout;
 		}
