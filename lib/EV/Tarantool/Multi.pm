@@ -101,10 +101,10 @@ sub new {
 						my ($status,$ver) = @{ $res->{tuples}[0] };
 						warn "Connected with status $status, watcher v$ver\n";
 						my $gen = ++$srv->{gen};
-						my $wait_timeout = 10;
+						my $wait_timeout = 1;
 						my $statuswait;$statuswait = sub { my $statuswait = $statuswait;
 							$gen == $srv->{gen} or return;
-							$c->lua('box.status_change_wait',[$status,$wait_timeout], { timeout => $wait_timeout+2 },sub {
+							$c->lua('box.status_change_wait',[$status,$wait_timeout], { timeout => $wait_timeout+1 },sub {
 								if (my $res = shift) {
 									my ($newstatus,$version) = @{ $res->{tuples}[0] };
 									my $rw = $newstatus eq 'primary' ? 1 : 0;
