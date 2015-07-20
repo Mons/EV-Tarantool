@@ -4,8 +4,9 @@ use 5.010;
 use strict;
 use warnings;
 no warnings 'uninitialized';
+use Scalar::Util qw(weaken);
 use EV::Tarantool;
-
+use Carp;
 sub U(@) { $_[0] }
 
 sub log_err {}
@@ -47,6 +48,7 @@ sub new {
 				host => $2,
 				port => $3 // 33013,
 				id   => $id,
+				gen  => 1,
 			};
 		}
 		$srv->{node} = ($srv->{rw} ? 'rw' : 'ro' ) . ':' . $srv->{host} . ':' . $srv->{port};
@@ -63,8 +65,79 @@ sub new {
 			connected => sub {
 				my $c = shift;
 				@{ $srv->{peer} = {} }{qw(host port)} = @_;
-				$warned = 0;
-				$self->_db_online( $srv );
+				$c->lua('box.dostring',['
+					if box.status_change_wait and box.status_change_wait_version == 4 then else
+						box.status_waiters = setmetatable({},{ __mode = "kv" })
+						function box.status_change_wait(status,timeout)
+							timeout = tonumber(timeout)
+							local ch = box.ipc.channel(1)
+							box.status_waiters[ch] = ch
+							local start = box.time()
+							while true do
+								local delta = box.time() - start
+								if status ~= box.info.status or delta >= timeout then
+									box.status_waiters[ch] = nil
+									ch = nil
+									return box.tuple.new({ box.info.status, tostring(box.status_change_wait_version) })
+								end
+								local z = ch:get(timeout - delta)
+							end
+						end
+						if box.status_change_wait then else
+							local prev = box.on_reload_configuration
+							function box.on_reload_configuration()
+								collectgarbage("collect")
+								for ch in pairs(box.status_waiters) do
+									ch:put(true)
+								end
+								prev()
+							end
+						end
+						box.status_change_wait_version = 4
+					end
+					return box.tuple.new({ box.info.status, tostring(box.status_change_wait_version) })
+				'],sub {
+					if (my $res = shift) {
+						my ($status,$ver) = @{ $res->{tuples}[0] };
+						warn "Connected with status $status, watcher v$ver\n";
+						my $gen = ++$srv->{gen};
+						my $wait_timeout = 10;
+						my $statuswait;$statuswait = sub { my $statuswait = $statuswait;
+							$gen == $srv->{gen} or return;
+							$c->lua('box.status_change_wait',[$status,$wait_timeout], { timeout => $wait_timeout+2 },sub {
+								if (my $res = shift) {
+									my ($newstatus,$version) = @{ $res->{tuples}[0] };
+									my $rw = $newstatus eq 'primary' ? 1 : 0;
+									if ($rw != $srv->{rw}) {
+										$self->_db_offline( $srv, "Status change $srv->{host}:$srv->{port}: $status to $newstatus");
+										$srv->{rw} = $rw;
+										$self->_db_online( $srv );
+									}
+									$status = $newstatus;
+								} else {
+									warn "status request failed on host $srv->{host}:$srv->{port}: @_";
+								}
+								$statuswait->();
+							});
+						};$statuswait->();weaken($statuswait);
+						if ($status eq 'primary') {
+							$srv->{rw} = 1;
+						}
+						elsif ($status =~ m{^replica/}) {
+							$srv->{rw} = 0;
+						}
+						else {
+							$srv->{rw} = 0;
+							warn "strange status received: $status";
+						}
+						$warned = 0;
+						$self->_db_online( $srv );
+					} else {
+						warn "Initial request failed on $srv->{host}:$srv->{port}: @_";
+						$c->reconnect;
+						return;
+					}
+				});
 			},
 			connfail => sub {
 				my ($c,$fail) = @_;
@@ -73,6 +146,7 @@ sub new {
 			},
 			disconnected => sub {
 				my $c = shift;
+				$srv->{gen}++;
 				@_ and $srv->{peer} and $self->log_warn( "Connection to $srv->{node}/$srv->{peer}{host}:$srv->{peer}{port} closed: @_" );
 				$self->_db_offline( $srv, @_ );
 				
@@ -80,12 +154,12 @@ sub new {
 		});
 		#$srv->{c}->connect;
 	}
-	if ($self->{connected_mode} eq 'rw' and not $rws ) {
-		die "Cluster could not ever be 'connected' since waiting for at least one 'rw' node, and have none of them (@{$servers})\n";
-	}
-	if ($self->{connected_mode} eq 'ro' and not $ros ) {
-		die "Cluster could not ever be 'connected' since waiting for at least one 'ro' node, and have none of them (@{$servers})\n";
-	}
+	#if ($self->{connected_mode} eq 'rw' and not $rws ) {
+	#	die "Cluster could not ever be 'connected' since waiting for at least one 'rw' node, and have none of them (@{$servers})\n";
+	#}
+	#if ($self->{connected_mode} eq 'ro' and not $ros ) {
+	#	die "Cluster could not ever be 'connected' since waiting for at least one 'ro' node, and have none of them (@{$servers})\n";
+	#}
 	if (not $ros+$rws ) {
 		die "Cluster could not ever be 'connected' since have no servers (@{$servers})\n";
 	}
@@ -215,37 +289,71 @@ sub _srv_by_mode {
 		$srv = $self->{stores}[ rand @{ $self->{stores} } ];
 		
 	}
-	return $srv->{c};
+	my $cb = pop;
+	return $srv->{c}, sub {
+		if ($_[0]) {
+			$_[0]{mode} = $srv->{rw} ? 'rw' : 'ro';
+		}
+		elsif ($_[2]) {
+			$_[2]{mode} = $srv->{rw} ? 'rw' : 'ro';
+		}
+		goto &$cb;
+	};
+}
+
+sub _srv_rw {
+	my $self = shift;
+	my $mode;
+	#warn "@_";
+	if ( @_ > 1 and !ref $_[-2] and $_[-2] =~ /^(?:r[ow]|any|a(?:ny|)r[ow])$/i  ) {
+		$mode = splice @_, -2,1;
+		if ($mode ne 'rw') {
+			carp "Can't use mode '$mode' for modification query";
+		}
+	}
+	@{ $self->{rwstores} } or do { $_[-1]( undef, "Have no connected nodes for mode rw" ), return };
+	my $srv = $self->{rwstores}[ rand @{ $self->{rwstores} } ];
+
+	my $cb = pop;
+	return $srv->{c}, sub {
+		if ($_[0]) {
+			$_[0]{mode} = $srv->{rw} ? 'rw' : 'ro';
+		}
+		elsif ($_[2]) {
+			$_[2]{mode} = $srv->{rw} ? 'rw' : 'ro';
+		}
+		goto &$cb;
+	};
 }
 
 sub ping : method {
-	my $srv  = &_srv_by_mode or return;
-	$srv->ping(@_);
+	my ($srv,$cb)  = &_srv_by_mode or return;
+	$srv->ping(@_,$cb);
 }
 
 sub lua : method {
-	my $srv  = &_srv_by_mode or return;
-	$srv->lua(@_);
+	my ($srv,$cb)  = &_srv_by_mode or return;
+	$srv->lua(@_,$cb);
 }
 
 sub select : method {
-	my $srv  = &_srv_by_mode or return;
-	$srv->select(@_);
+	my ($srv,$cb)  = &_srv_by_mode or return;
+	$srv->select(@_,$cb);
 }
 
 sub insert : method {
-	my $srv  = &_srv_by_mode or return;
-	$srv->insert(@_);
+	my ($srv,$cb)  = &_srv_rw or return;
+	$srv->insert(@_,$cb);
 }
 
 sub delete : method {
-	my $srv  = &_srv_by_mode or return;
-	$srv->delete(@_);
+	my ($srv,$cb)  = &_srv_rw or return;
+	$srv->delete(@_,$cb);
 }
 
 sub update : method {
-	my $srv  = &_srv_by_mode or return;
-	$srv->update(@_);
+	my ($srv,$cb)  = &_srv_rw or return;
+	$srv->update(@_,$cb);
 }
 
 sub each : method {
