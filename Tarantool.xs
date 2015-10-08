@@ -185,6 +185,7 @@ static void on_read(ev_cnn * self, size_t len) {
 }
 
 void free_reqs (TntCnn *self, const char * message) {
+	if (unlikely(!self->reqs)) return;
 	
 	ENTER;SAVETMPS;
 	
@@ -288,12 +289,13 @@ void DESTROY(SV *this)
 		if (0) this = this;
 		xs_ev_cnn_self(TntCnn);
 		
-		//cwarn("destroy this: %p; iv[%d]: %p; self: %p; self->self: %p",ST(0), SvREFCNT(SvRV(this)), SvRV(this), self, self->self);
+		//cwarn("destroy this: %p; iv[%d]: %p; self: %p; self->self: %p; dirty: %d",ST(0), SvREFCNT(SvRV(this)), SvRV(this), self, self->self, PL_dirty);
 		//SV * leak = newSV(1024);
 		if (!PL_dirty) {
 			if (self->reqs) {
 				free_reqs(self, "Destroyed");
 				SvREFCNT_dec(self->reqs);
+				self->reqs = 0;
 			}
 			if (self->spaces) {
 				destroy_spaces(self->spaces);
