@@ -34,7 +34,7 @@ static void on_request_timer(EV_P_ ev_timer *t, int flags ) {
 	ENTER;SAVETMPS;
 	dSP;
 	
-	hv_delete( self->reqs, (char *) &ctx->id, sizeof(ctx->id),0);
+	(void) hv_delete( self->reqs, (char *) &ctx->id, sizeof(ctx->id),0);
 	
 	SvREFCNT_dec(ctx->wbuf);
 	if (ctx->f.size && !ctx->f.nofree) {
