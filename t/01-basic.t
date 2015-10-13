@@ -120,6 +120,8 @@ my $realspaces = {
 
 my $tnt = tnt_run();
 
+$tnt->{cnntrace} = 0;
+
 	my $nc = sub {
 		for (
 			[ ping => [] ],
@@ -142,6 +144,7 @@ my $tnt = tnt_run();
 		host => $tnt->{host},
 		port => $tnt->{port},
 		reconnect => 0.2,
+		cnntrace => $tnt->{cnntrace},
 		connected => sub {
 			warn "connected: @_";
 			$connected++;
@@ -152,7 +155,7 @@ my $tnt = tnt_run();
 			is $err, Errno::ECONNREFUSED, 'connfail - refused' or diag "$!, $_[1]";
 			$nc->(@_) if $cfs == 0;
 			$cfs++;
-			# and 
+			# and
 				EV::unloop;
 		},
 		disconnected => sub {
@@ -242,6 +245,7 @@ my $tnt = tnt_run();
 		port => $tnt->{port},
 		spaces => $realspaces,
 		reconnect => 0.2,
+		cnntrace => $tnt->{cnntrace},
 		connected => sub {
 			warn "connected: @_";
 			$connected++;
@@ -252,7 +256,7 @@ my $tnt = tnt_run();
 			is $err, Errno::ECONNREFUSED, 'connfail - refused' or diag "$!, $_[1]";
 			$nc->(@_) if $cfs == 0;
 			$cfs++;
-			# and 
+			# and
 				EV::unloop;
 		},
 		disconnected => sub {
@@ -313,6 +317,7 @@ my $tnt = tnt_run();
 	$c = EV::Tarantool->new({
 		host => $tnt->{host},
 		port => $tnt->{port},
+		cnntrace => $tnt->{cnntrace},
 		connected => sub {
 			my $c = shift;
 			$c->disconnect;
@@ -350,6 +355,7 @@ my $tnt = tnt_run();
 		my $s = EV::Tarantool->new({
 			host => '0',
 			port => 33013,
+			cnntrace => $tnt->{cnntrace},
 			spaces => $spaces,
 			connected => sub {
 				my $c = shift;
@@ -371,6 +377,7 @@ my $tnt = tnt_run();
 	$c = EV::Tarantool->new({
 		host => $tnt->{host},
 		port => $tnt->{port},
+		cnntrace => $tnt->{cnntrace},
 		spaces => $spaces,
 		connected => sub {
 			$connected++;

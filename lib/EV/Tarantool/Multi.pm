@@ -22,6 +22,7 @@ sub new {
 		recovery_lag  => 1,
 		reconnect => 1/3,
 		connected_mode => 'any', # rw|ro|any - when to call 'connected'
+		cnntrace => 1,
 		@_,
 		stores => [],
 		rwstores => [],
@@ -62,6 +63,7 @@ sub new {
 			reconnect => $self->{reconnect},
 			spaces => $spaces,
 			read_buffer => 2*1024*1024,
+			cnntrance => $self->{cnntrace},
 			connected => sub {
 				my $c = shift;
 				@{ $srv->{peer} = {} }{qw(host port)} = @_;

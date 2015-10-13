@@ -281,6 +281,8 @@ void new(SV *pk, HV *conf)
 		if ((key = hv_fetchs(conf, "spaces", 0)) && SvROK(*key)) {
 			configure_spaces( self->spaces, *key );
 		}
+		
+		if ((key = hv_fetchs(conf, "cnntrace", 0))) self->cnn.trace = SvOK(*key) && SvIOK(*key) ? SvIV(*key) : 1;
 		XSRETURN(1);
 
 
