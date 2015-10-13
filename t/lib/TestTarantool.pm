@@ -249,5 +249,9 @@ space[2] = {
 
 @@ init.lua
 
+function dummy( arg )
+	return 'ok'
+end
+
 box.insert(1,"test1","testx",123ULL);
 box.insert(1,"test2","testx",456ULL);
