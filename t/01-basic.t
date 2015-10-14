@@ -320,6 +320,7 @@ $tnt->{cnntrace} = 0;
 		cnntrace => $tnt->{cnntrace},
 		connected => sub {
 			my $c = shift;
+			# warn "connected: @_";
 			$c->disconnect;
 			return EV::unloop if ++$cnt >= 20000;
 			$c->connect;
@@ -330,13 +331,15 @@ $tnt->{cnntrace} = 0;
 		},
 		disconnected => sub {
 			my $c = shift;
-			warn "disconnected: @_";
-			EV::unloop;
+			# warn "disconnected: @_";
+			# EV::unloop;
 			#$c->connect;
 		},
 	});
 	my ($rss1,$vsz1) = meminfo();
 	warn sprintf "%0.2fM/%0.2fM", $rss1/1024/1024,$vsz1/1024/1024;
+	
+	$start = time;
 	
 	$c->connect;
 	EV::loop;
