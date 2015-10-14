@@ -1,6 +1,8 @@
 # Avoid version control files.
 \B\.git\b
 
+\.tarantool
+
 # Avoid Makemaker generated and utility files.
 \bMANIFEST\.bak
 \bMakefile$

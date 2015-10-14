@@ -63,7 +63,7 @@ sub new {
 			reconnect => $self->{reconnect},
 			spaces => $spaces,
 			read_buffer => 2*1024*1024,
-			cnntrance => $self->{cnntrace},
+			cnntrace => $self->{cnntrace},
 			connected => sub {
 				my $c = shift;
 				@{ $srv->{peer} = {} }{qw(host port)} = @_;

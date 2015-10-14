@@ -1,0 +1,14 @@
+blib*
+Makefile
+Makefile.old
+MYMETA.*
+MANIFEST.bak
+Build
+_build*
+pm_to_blib*
+*.tar.gz
+.lwpcookies
+cover_db
+*.swp
+
+/.tarantool/
