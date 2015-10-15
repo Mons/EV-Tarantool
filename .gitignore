@@ -12,3 +12,5 @@ cover_db
 *.swp
 
 /.tarantool/
+Tarantool.c
+Tarantool.o

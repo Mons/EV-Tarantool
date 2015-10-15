@@ -12,6 +12,33 @@
 
 #include "xstnt.h"
 
+#ifndef TNT_WBUF_LIMIT
+#  define TNT_WBUF_LIMIT 16000
+#endif
+
+#define	CHECK_WBUF(self, cb) STMT_START { \
+	if (likely(self->wbuf_limit > 0)) { \
+		if (unlikely(self->cnn.wuse >= self->wbuf_limit)) { \
+			cwarn("Write buffer limit exceeded. wuse: %d. wbuf_limit: %u", self->cnn.wuse, self->wbuf_limit); \
+			ENTER;SAVETMPS; \
+			dSP; \
+			if (cb) { \
+				SPAGAIN; \
+				ENTER; SAVETMPS; \
+				PUSHMARK(SP); \
+				EXTEND(SP, 2); \
+				PUSHs( &PL_sv_undef ); \
+				PUSHs( sv_2mortal(newSVpvf("Write buffer limit exceeded")) ); \
+				PUTBACK; \
+				(void) call_sv( cb, G_DISCARD | G_VOID ); \
+				FREETMPS; LEAVE; \
+			} \
+			FREETMPS;LEAVE; \
+			XSRETURN_UNDEF; \
+		} \
+	} \
+} STMT_END
+
 typedef struct {
 	xs_ev_cnn_struct;
 	
@@ -25,6 +52,7 @@ typedef struct {
 	U32      use_hash;
 	HV      *reqs;
 	HV      *spaces;
+	uint32_t wbuf_limit;
 } TntCnn;
 
 static void on_request_timer(EV_P_ ev_timer *t, int flags ) {
@@ -283,6 +311,14 @@ void new(SV *pk, HV *conf)
 		}
 		
 		if ((key = hv_fetchs(conf, "cnntrace", 0))) self->cnn.trace = (SvOK(*key) && SvIOK(*key)) ? SvIV(*key) : 1;
+		if ((key = hv_fetchs(conf, "wbuf_limit", 0))) {
+			if (SvOK(*key) && SvIOK(*key)) {
+				IV wbuf_limit = SvIV(*key);
+				self->wbuf_limit = wbuf_limit > 0 ? wbuf_limit : 0;
+			} else {
+				self->wbuf_limit = TNT_WBUF_LIMIT;
+			}
+		}
 		XSRETURN(1);
 
 
@@ -324,6 +360,7 @@ void ping(SV *this, SV * cb)
 		if (0) this = this;
 		xs_ev_cnn_self(TntCnn);
 		xs_ev_cnn_checkconn(self,cb);
+		CHECK_WBUF(self, cb);
 		
 		dSVX(ctxsv, ctx, TntCtx);
 		ctx->call = "ping";
@@ -345,6 +382,7 @@ void lua( SV *this, SV * proc, AV * tuple, ... )
 		xs_ev_cnn_self(TntCnn);
 		SV *cb = ST(items-1);
 		xs_ev_cnn_checkconn(self,cb);
+		CHECK_WBUF(self, cb);
 		HV *opts = items == 5 ? (HV *) SvRV(ST( 3 )) : 0;
 		
 		dSVX(ctxsv, ctx, TntCtx);
@@ -391,6 +429,7 @@ void select( SV *this, SV *space, AV * keys, ... )
 		xs_ev_cnn_self(TntCnn);
 		SV *cb = ST(items-1);
 		xs_ev_cnn_checkconn(self,cb);
+		CHECK_WBUF(self, cb);
 		
 		dSVX(ctxsv, ctx, TntCtx);
 		sv_2mortal(ctxsv);
@@ -420,6 +459,7 @@ void insert( SV *this, SV *space, SV * t, ... )
 		xs_ev_cnn_self(TntCnn);
 		SV *cb = ST(items-1);
 		xs_ev_cnn_checkconn(self,cb);
+		CHECK_WBUF(self, cb);
 		
 		dSVX(ctxsv, ctx, TntCtx);
 		sv_2mortal(ctxsv);
@@ -446,6 +486,7 @@ void update( SV *this, SV *space, SV * t, AV *ops, ... )
 		xs_ev_cnn_self(TntCnn);
 		SV *cb = ST(items-1);
 		xs_ev_cnn_checkconn(self,cb);
+		CHECK_WBUF(self, cb);
 		
 		dSVX(ctxsv, ctx, TntCtx);
 		sv_2mortal(ctxsv);

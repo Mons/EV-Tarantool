@@ -227,6 +227,7 @@ script_dir       = %{tntroot}
 work_dir         = %{tntroot}
 wal_mode         = none
 # log_level        = 1
+readahead        = 4096
 
 space[1] = {
 	enabled = 1,

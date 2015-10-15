@@ -120,7 +120,10 @@ my $realspaces = {
 
 my $tnt = tnt_run();
 
-$tnt->{cnntrace} = 0;
+my %tnt_extras = (
+	cnntrace => 0,
+	wbuf_limit => 0,
+);
 
 	my $nc = sub {
 		for (
@@ -144,7 +147,7 @@ $tnt->{cnntrace} = 0;
 		host => $tnt->{host},
 		port => $tnt->{port},
 		reconnect => 0.2,
-		cnntrace => $tnt->{cnntrace},
+		%tnt_extras,
 		connected => sub {
 			warn "connected: @_";
 			$connected++;
@@ -245,7 +248,7 @@ $tnt->{cnntrace} = 0;
 		port => $tnt->{port},
 		spaces => $realspaces,
 		reconnect => 0.2,
-		cnntrace => $tnt->{cnntrace},
+		%tnt_extras,
 		connected => sub {
 			warn "connected: @_";
 			$connected++;
@@ -317,7 +320,7 @@ $tnt->{cnntrace} = 0;
 	$c = EV::Tarantool->new({
 		host => $tnt->{host},
 		port => $tnt->{port},
-		cnntrace => $tnt->{cnntrace},
+		%tnt_extras,
 		connected => sub {
 			my $c = shift;
 			# warn "connected: @_";
@@ -358,7 +361,7 @@ $tnt->{cnntrace} = 0;
 		my $s = EV::Tarantool->new({
 			host => '0',
 			port => 33013,
-			cnntrace => $tnt->{cnntrace},
+			%tnt_extras,
 			spaces => $spaces,
 			connected => sub {
 				my $c = shift;
@@ -380,7 +383,7 @@ $tnt->{cnntrace} = 0;
 	$c = EV::Tarantool->new({
 		host => $tnt->{host},
 		port => $tnt->{port},
-		cnntrace => $tnt->{cnntrace},
+		%tnt_extras,
 		spaces => $spaces,
 		connected => sub {
 			$connected++;
