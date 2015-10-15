@@ -23,6 +23,7 @@ sub new {
 		reconnect => 1/3,
 		connected_mode => 'any', # rw|ro|any - when to call 'connected'
 		cnntrace => 1,
+		wbuf_limit => 16000,
 		@_,
 		stores => [],
 		rwstores => [],
@@ -64,6 +65,7 @@ sub new {
 			spaces => $spaces,
 			read_buffer => 2*1024*1024,
 			cnntrace => $self->{cnntrace},
+			wbuf_limit => $self->{wbuf_limit},
 			connected => sub {
 				my $c = shift;
 				@{ $srv->{peer} = {} }{qw(host port)} = @_;
