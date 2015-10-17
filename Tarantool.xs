@@ -336,7 +336,6 @@ void ping(SV *this, SV * cb)
 	PPCODE:
 		if (0) this = this;
 		xs_ev_cnn_self(TntCnn);
-		xs_ev_cnn_checkconn(self,cb);
 		xs_ev_cnn_checkconn_wlimit(self, cb, self->wbuf_limit);
 		
 		dSVX(ctxsv, ctx, TntCtx);
@@ -358,7 +357,6 @@ void lua( SV *this, SV * proc, AV * tuple, ... )
 		if (0) this = this;
 		xs_ev_cnn_self(TntCnn);
 		SV *cb = ST(items-1);
-		xs_ev_cnn_checkconn(self,cb);
 		xs_ev_cnn_checkconn_wlimit(self, cb, self->wbuf_limit);
 		HV *opts = items == 5 ? (HV *) SvRV(ST( 3 )) : 0;
 		
@@ -405,7 +403,6 @@ void select( SV *this, SV *space, AV * keys, ... )
 		// TODO: croak cleanup may be solved with refcnt+mortal
 		xs_ev_cnn_self(TntCnn);
 		SV *cb = ST(items-1);
-		xs_ev_cnn_checkconn(self,cb);
 		xs_ev_cnn_checkconn_wlimit(self, cb, self->wbuf_limit);
 		
 		dSVX(ctxsv, ctx, TntCtx);
@@ -435,7 +432,6 @@ void insert( SV *this, SV *space, SV * t, ... )
 		if (0) this = this;
 		xs_ev_cnn_self(TntCnn);
 		SV *cb = ST(items-1);
-		xs_ev_cnn_checkconn(self,cb);
 		xs_ev_cnn_checkconn_wlimit(self, cb, self->wbuf_limit);
 		
 		dSVX(ctxsv, ctx, TntCtx);
@@ -462,7 +458,6 @@ void update( SV *this, SV *space, SV * t, AV *ops, ... )
 		
 		xs_ev_cnn_self(TntCnn);
 		SV *cb = ST(items-1);
-		xs_ev_cnn_checkconn(self,cb);
 		xs_ev_cnn_checkconn_wlimit(self, cb, self->wbuf_limit);
 		
 		dSVX(ctxsv, ctx, TntCtx);
