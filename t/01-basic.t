@@ -121,7 +121,7 @@ my $realspaces = {
 my $tnt = tnt_run();
 
 my %tnt_extras = (
-	cnntrace => 0,
+	cnntrace => 1,
 	wbuf_limit => 0,
 );
 
@@ -157,9 +157,8 @@ my %tnt_extras = (
 			my $err = 0+$!;
 			is $err, Errno::ECONNREFUSED, 'connfail - refused' or diag "$!, $_[1]";
 			$nc->(@_) if $cfs == 0;
-			$cfs++;
-			# and
-				EV::unloop;
+			$cfs++; #and
+			EV::unloop;
 		},
 		disconnected => sub {
 			warn "discon: @_ / $!";
