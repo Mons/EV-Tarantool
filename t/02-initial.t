@@ -12,13 +12,13 @@ my $c = EV::Tarantool->new({
 	port => 33013,
 	reconnect => 1/3,
 	connected => sub {
-		fail "No call";
+		fail "No call connected";
 	},
 	connfail => sub {
-		fail "No call";
+		fail "No call connfail";
 	},
 	disconnected => sub {
-		fail "No call";
+		fail "No call disconnected";
 	},
 });
 
