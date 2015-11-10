@@ -287,7 +287,6 @@ void new(SV *pk, HV *conf)
 			configure_spaces( self->spaces, *key );
 		}
 		
-		if ((key = hv_fetchs(conf, "cnntrace", 0))) self->cnn.trace = (SvOK(*key) && SvIOK(*key)) ? SvIV(*key) : 1;
 		if ((key = hv_fetchs(conf, "wbuf_limit", 0))) {
 			if (SvOK(*key) && SvIOK(*key)) {
 				IV wbuf_limit = SvIV(*key);
