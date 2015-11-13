@@ -288,7 +288,7 @@ void new(SV *pk, HV *conf)
 		}
 		
 		if ((key = hv_fetchs(conf, "wbuf_limit", 0))) {
-			if (SvOK(*key) && SvIOK(*key)) {
+			if (SvOK(*key)) {
 				IV wbuf_limit = SvIV(*key);
 				self->wbuf_limit = wbuf_limit > 0 ? wbuf_limit : 0;
 			} else {
