@@ -23,6 +23,7 @@ sub new {
 		reconnect => 1/3,
 		connected_mode => 'any', # rw|ro|any - when to call 'connected'
 		cnntrace => 1,
+		ares_reuse => 0,
 		wbuf_limit => 16000,
 		@_,
 		stores => [],
@@ -65,6 +66,7 @@ sub new {
 			spaces => $spaces,
 			read_buffer => 2*1024*1024,
 			cnntrace => $self->{cnntrace},
+			ares_reuse => $self->{ares_reuse},
 			wbuf_limit => $self->{wbuf_limit},
 			connected => sub {
 				my $c = shift;
