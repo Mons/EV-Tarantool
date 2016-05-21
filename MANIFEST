@@ -1,5 +1,6 @@
 .gitignore
 .gitmodules
+evcnn/.gitignore
 evcnn/CMakeLists.txt
 evcnn/ex/sample.c
 evcnn/src/evconnection.h

@@ -121,7 +121,7 @@ my $realspaces = {
 my $tnt = tnt_run();
 
 my %tnt_extras = (
-	cnntrace => 1,
+	cnntrace => 0,
 	ares_reuse => 0,
 	wbuf_limit => 0,
 );
