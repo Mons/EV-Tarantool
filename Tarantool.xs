@@ -403,6 +403,7 @@ void select( SV *this, SV *space, AV * keys, ... )
 		xs_ev_cnn_self(TntCnn);
 		SV *cb = ST(items-1);
 		xs_ev_cnn_checkconn_wlimit(self, cb, self->wbuf_limit);
+		HV *opts = items == 5 ? (HV *) SvRV(ST( 3 )) : 0;
 		
 		dSVX(ctxsv, ctx, TntCtx);
 		sv_2mortal(ctxsv);
@@ -412,6 +413,22 @@ void select( SV *this, SV *space, AV * keys, ... )
 		uint32_t iid = ++self->seq;
 		
 		if ((ctx->wbuf = pkt_select(ctx, iid, self->spaces, space, keys, items == 5 ? (HV *) SvRV(ST( 3 )) : 0, cb ))) {
+
+			double timeout;
+			SV **key;
+			if ( opts && (key = hv_fetchs( opts, "timeout", 0 ))) {
+				timeout = SvNV( *key );
+				//cwarn("to from args: %f",timeout);
+			} else {
+				timeout = self->cnn.rw_timeout;
+			}
+			
+			if (timeout > 0) {
+				ctx->id = iid;
+				ctx->self = self;
+				ev_timer_init(&ctx->t, on_request_timer, timeout, 0.);
+				ev_timer_start(self->cnn.loop, &ctx->t);
+			}
 		
 			SvREFCNT_inc(ctx->cb = cb);
 			(void) hv_store( self->reqs, (char*)&iid, sizeof(iid), SvREFCNT_inc(ctxsv), 0 );
