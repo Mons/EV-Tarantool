@@ -73,48 +73,65 @@ sub new {
 				@{ $srv->{peer} = {} }{qw(host port)} = @_;
 				$c->lua('box.dostring',['return box.info.status'],sub {
 					$warned = 0;
-					if (my $res = shift) {
-						my ($status) = @{ $res->{tuples}[0] };
-						warn "Connected with status $status\n";
-						my $gen = ++$srv->{gen};
-						if ($status eq 'primary') {
-							$srv->{rw} = 1;
-						}
-						elsif ($status =~ m{^replica/}) {
-							$srv->{rw} = 0;
-						}
-						else {
-							$srv->{rw} = 0;
-							warn "strange status received: $status";
-						}
-						$self->_db_online( $srv );
-						my $check;$check = sub { my $check = $check;
-							$gen == $srv->{gen} or return;
-							$c->lua('box.dostring',['return box.info.status'],sub {
-								if (my $res = shift) {
-									my ($newstatus) = @{ $res->{tuples}[0] };
-									# warn $newstatus;
-									my $rw = $newstatus eq 'primary' ? 1 : 0;
-									if ($rw != $srv->{rw}) {
-										$self->_db_offline( $srv, "Status change $srv->{host}:$srv->{port}: $status to $newstatus");
-										$srv->{rw} = $rw;
-										$self->_db_online( $srv );
-									}
-									$status = $newstatus;
-								} else {
-									warn "Status request failed on host $srv->{host}:$srv->{port}: @_";
-								}
-								my $w;$w = EV::timer 0.1,0,sub {
-									undef $w;
-									$check->();
-								};
-							});
-						};$check->();weaken($check);
-					} else {
+					my $res = shift;
+					unless($res) {
 						warn "Initial request failed on $srv->{host}:$srv->{port}: @_";
 						$c->reconnect;
 						return;
 					}
+					unless($res->{status} eq 'ok' and $res->{count} == 1) {
+						warn "Bad response for the initial request on $srv->{host}:$srv->{port}: st=$res->{status} cn=$res->{count}";
+						$c->reconnect;
+						return;
+					}
+					
+					my ($status) = @{ $res->{tuples}[0] };
+					warn "Connected with status $status\n";
+					my $gen = ++$srv->{gen};
+					if ($status eq 'primary') {
+						$srv->{rw} = 1;
+					}
+					elsif ($status =~ m{^replica/}) {
+						$srv->{rw} = 0;
+					}
+					else {
+						$srv->{rw} = 0;
+						warn "strange status received: $status";
+					}
+					$self->_db_online( $srv );
+					my $check;$check = sub { my $check = $check;
+						$gen == $srv->{gen} or return;
+						$c->lua('box.dostring',['return box.info.status'],sub {
+							my $res = shift;
+							
+							my $w;$w = EV::timer 0.1,0,sub {
+								undef $w;
+								$check->();
+							};
+							
+							# FIXME: Don't we have to reconnect on fail, do we?
+							unless($res) {
+								warn "Status request failed on $srv->{host}:$srv->{port}: @_";
+								return;
+							}
+							# FIXME: Don't we have to reconnect on fail, do we?
+							unless($res->{status} eq 'ok' and $res->{count} == 1) {
+								warn "Bad response for the initial request on $srv->{host}:$srv->{port}: st=$res->{status} cn=$res->{count}";
+								return;
+							}
+							
+							my ($newstatus) = @{ $res->{tuples}[0] };
+							# warn $newstatus;
+							my $rw = $newstatus eq 'primary' ? 1 : 0;
+							if ($rw != $srv->{rw}) {
+								$self->_db_offline( $srv, "Status change $srv->{host}:$srv->{port}: $status to $newstatus");
+								$srv->{rw} = $rw;
+								$self->_db_online( $srv );
+							}
+							$status = $newstatus;
+							
+						});
+					};$check->();weaken($check);
 				});
 				
 				### This will wait for good tarantool with async protocol
