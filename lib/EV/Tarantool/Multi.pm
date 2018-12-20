@@ -101,8 +101,16 @@ sub new {
 					$self->_db_online( $srv );
 					my $check;$check = sub { my $check = $check;
 						$gen == $srv->{gen} or return;
+						
+						# It's nothing to do after the RUN phase.
+						return if ${^GLOBAL_PHASE} eq 'DESTRUCT';
+						
 						$c->lua('box.dostring',['return box.info.status'],sub {
 							my $res = shift;
+							
+							# Calling EV::timer in the DESTRUCT phase can cause
+							# core dumping. let's stop here.
+							return if ${^GLOBAL_PHASE} eq 'DESTRUCT';
 							
 							my $w;$w = EV::timer 0.1,0,sub {
 								undef $w;
