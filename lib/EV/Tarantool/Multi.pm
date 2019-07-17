@@ -64,7 +64,7 @@ sub new {
 			timeout => $self->{timeout},
 			reconnect => $self->{reconnect},
 			spaces => $spaces,
-			read_buffer => 2*1024*1024,
+			read_buffer => 10*1024*1024,
 			cnntrace => $self->{cnntrace},
 			ares_reuse => $self->{ares_reuse},
 			wbuf_limit => $self->{wbuf_limit},
