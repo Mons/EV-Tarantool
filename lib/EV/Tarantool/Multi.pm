@@ -76,12 +76,18 @@ sub new {
 					my $res = shift;
 					unless($res) {
 						warn "Initial request failed on $srv->{host}:$srv->{port}: @_";
-						$c->reconnect;
+						my $tw;$tw = EV::timer $self->{reconnect}, 0, sub {
+							undef $tw;
+							$c->reconnect;
+						};
 						return;
 					}
 					unless($res->{status} eq 'ok' and $res->{count} == 1) {
 						warn "Bad response for the initial request on $srv->{host}:$srv->{port}: st=$res->{status} cn=$res->{count}";
-						$c->reconnect;
+						my $tw;$tw = EV::timer $self->{reconnect}, 0, sub {
+							undef $tw;
+							$c->reconnect;
+						};
 						return;
 					}
 					
