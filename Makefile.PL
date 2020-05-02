@@ -14,6 +14,7 @@ WriteMakefile(
 	VERSION_FROM      => 'lib/EV/Tarantool.pm',
 	ABSTRACT_FROM     => 'lib/EV/Tarantool.pm',
 	PREREQ_PM         => { EV => 4 },
+	TEST_REQUIRES     => {'Test::Tarantool' => 0},
 	LIBS              => ['-lcares110', '-lcares'],
 	DEFINE            => '-g -ggdb -O0',
 	CONFIGURE => sub {
